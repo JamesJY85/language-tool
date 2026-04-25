@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<!-- saved from url=(0091)file:///C:/Users/User/Downloads/%E8%AA%9E%E8%A8%80%E8%A7%A3%E6%9E%90%E5%8A%A9%E6%89%8B.html -->
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="語言助手">
+<meta name="theme-color" content="#1a1a2e">
+<title>語言解析助手</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep: #1a1a2e;
+    --bg-mid: #16213e;
+    --bg-light: #f7f5f0;
+    --bg-white: #ffffff;
+    --gold: #c8a96e;
+    --gold-dark: #9b7940;
+    --text-dark: #2c2c2a;
+    --text-muted: #888780;
+    --border: #e0ddd5;
+    --border-dark: #334466;
+    --bubble-user-bg: #1a1a2e;
+    --bubble-user-text: #e8e0d0;
+    --bubble-ai-bg: #ffffff;
+    --bubble-ai-text: #2c2c2a;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Hiragino Sans', 'Noto Sans TC', 'PingFang TC', sans-serif;
+    background: var(--bg-light);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg-light);
+    position: relative;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--bg-deep);
+    padding: calc(var(--safe-top) + 12px) 1.25rem 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .header-title { color: #e8e0d0; font-size: 15px; font-weight: 500; letter-spacing: 0.06em; }
+  .header-badges { display: flex; gap: 5px; }
+  .lang-badge {
+    font-size: 10px; font-weight: 500;
+    padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .badge-th { background: #fff3cd; color: #856404; }
+  .badge-ja { background: #fde8e8; color: #8b1a1a; }
+
+  /* ── API Bar ── */
+  .api-bar {
+    background: var(--bg-mid);
+    padding: 8px 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .api-label { font-size: 11px; color: #6688aa; white-space: nowrap; }
+  .api-input {
+    flex: 1;
+    background: rgba(255,255,255,0.07);
+    border: 0.5px solid var(--border-dark);
+    border-radius: 6px;
+    color: #c8d8e8;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    font-family: 'Courier New', monospace;
+    min-width: 0;
+    -webkit-appearance: none;
+  }
+  .api-input:focus { border-color: var(--gold); }
+  .api-dot { width: 7px; height: 7px; border-radius: 50%; background: #444; flex-shrink: 0; transition: background 0.3s; }
+  .api-dot.active { background: #4caf50; }
+
+  /* ── Chat Area ── */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+    text-align: center;
+    flex: 1;
+  }
+  .empty-icon {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: var(--bg-deep);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+  .empty-title { font-size: 15px; color: var(--text-dark); font-weight: 500; }
+  .empty-desc { font-size: 13px; line-height: 1.7; }
+
+  /* ── Messages ── */
+  .msg { display: flex; flex-direction: column; }
+  .msg.user { align-items: flex-end; }
+  .msg.assistant { align-items: flex-start; }
+
+  .bubble {
+    max-width: 86%;
+    border-radius: 18px;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.7;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .msg.user .bubble {
+    background: var(--bubble-user-bg);
+    color: var(--bubble-user-text);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.assistant .bubble {
+    background: var(--bubble-ai-bg);
+    color: var(--bubble-ai-text);
+    border: 0.5px solid var(--border);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .msg-thumb {
+    max-width: 160px;
+    border-radius: 10px;
+    border: 0.5px solid var(--border);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* ── TTS Words ── */
+  .tts-word {
+    cursor: pointer;
+    border-bottom: 1.5px dashed var(--gold);
+    border-radius: 2px;
+    padding: 0 1px;
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tts-word:active, .tts-word.playing {
+    background: rgba(200, 169, 110, 0.18);
+    border-bottom-color: var(--gold-dark);
+  }
+
+  /* ── Loading ── */
+  .loading-bubble {
+    background: var(--bubble-ai-bg);
+    border: 0.5px solid var(--border);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+  }
+  .dots { display: flex; gap: 5px; align-items: center; }
+  .dots span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 1.3s infinite ease-in-out;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
+
+  /* ── Input Area ── */
+  .input-area {
+    background: var(--bg-white);
+    border-top: 0.5px solid var(--border);
+    padding: 8px 12px calc(var(--safe-bottom) + 8px);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .img-preview-row {
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .img-preview-wrap { position: relative; display: inline-block; }
+  .img-preview-wrap img {
+    height: 64px;
+    border-radius: 8px;
+    border: 0.5px solid var(--border);
+    display: block;
+  }
+  .btn-remove-img {
+    position: absolute; top: -6px; right: -6px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg-deep); color: #e8e0d0;
+    font-size: 10px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .action-row { display: flex; gap: 7px; }
+  .btn-action {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 9px;
+    border: 0.5px solid var(--border);
+    background: #faf9f7;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+    white-space: nowrap;
+  }
+  .btn-action:active { background: #f0ede6; }
+
+  .input-row { display: flex; align-items: flex-end; gap: 8px; }
+  .prompt-input {
+    flex: 1;
+    border: 0.5px solid #d0ccc4;
+    border-radius: 12px;
+    padding: 9px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    min-height: 40px;
+    max-height: 100px;
+    outline: none;
+    background: #faf9f7;
+    color: var(--text-dark);
+    -webkit-appearance: none;
+    line-height: 1.5;
+  }
+  .prompt-input:focus { border-color: var(--gold); }
+
+  .btn-send {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg-deep);
+    border: none;
+    color: var(--gold);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-send:disabled { opacity: 0.35; }
+  .btn-send:active:not(:disabled) { transform: scale(0.93); }
+
+  .hint-row {
+    text-align: center;
+    font-size: 11px;
+    color: #bbb;
+    letter-spacing: 0.02em;
+  }
+
+  #file-input { display: none; }
+
+  /* ── Error ── */
+  .error-bubble {
+    background: #fff5f5;
+    border: 0.5px solid #fcc;
+    color: #8b1a1a;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    max-width: 86%;
+  }
+
+  /* ── iOS PWA install hint ── */
+  .install-hint {
+    background: var(--bg-mid);
+    color: #8899aa;
+    font-size: 11px;
+    text-align: center;
+    padding: 5px;
+    flex-shrink: 0;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-dot"></div>
+      <div class="header-title">語言解析助手</div>
+    </div>
+    <div class="header-badges">
+      <span class="lang-badge badge-th">TH</span>
+      <span class="lang-badge badge-ja">JA</span>
+    </div>
+  </div>
+
+  <div class="api-bar">
+    <span class="api-label">Gemini Key</span>
+    <input class="api-input" type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" spellcheck="false">
+    <div class="api-dot" id="api-dot"></div>
+  </div>
+
+  <div class="install-hint" id="install-hint">
+    📲 在 Safari 點「分享」→「加入主畫面」即可當 App 使用
+  </div>
+
+  <div class="chat-area" id="chat-area">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📷</div>
+      <div class="empty-title">拍照解析語言</div>
+      <div class="empty-desc">
+        上傳泰語或日語圖片<br>
+        Gemini 分析文法與意思<br>
+        <strong>點選帶底線文字即可發音</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+
+    <div class="img-preview-row" id="img-preview-row">
+      <div class="img-preview-wrap">
+        <img id="preview-img" src="file:///C:/Users/User/Downloads/%E8%AA%9E%E8%A8%80%E8%A7%A3%E6%9E%90%E5%8A%A9%E6%89%8B.html" alt="預覽圖片">
+        <button class="btn-remove-img" onclick="removeImage()" title="移除">✕</button>
+      </div>
+      <span style="font-size:12px;color:#aaa;">圖片已準備好</span>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-action" onclick="triggerCamera()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        拍照 / 上傳
+      </button>
+      <button class="btn-action" onclick="quickPrompt(&#39;請分析這段文字的文法結構，逐一解釋每個詞彙與句型&#39;)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+        文法分析
+      </button>
+      <button class="btn-action" onclick="quickPrompt(&#39;請翻譯這段文字並說明其文化背景與常見用法&#39;)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+        翻譯說明
+      </button>
+    </div>
+
+    <div class="input-row">
+      <textarea class="prompt-input" id="prompt-input" rows="1" placeholder="輸入問題，或上傳圖片後送出…"></textarea>
+      <button class="btn-send" id="send-btn" onclick="sendMessage()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+
+    <div class="hint-row">帶底線文字可點選發音｜支援泰語 🇹🇭 日語 🇯🇵</div>
+  </div>
+
+</div>
+
+<input type="file" id="file-input" accept="image/*" capture="environment">
+
+<script>
+// ── State ──
+let imageBase64 = null;
+let imageMime = null;
+let history = [];
+let isLoading = false;
+
+// ── DOM refs ──
+const apiInput = document.getElementById('api-key-input');
+const apiDot = document.getElementById('api-dot');
+const chatArea = document.getElementById('chat-area');
+const emptyState = document.getElementById('empty-state');
+const promptInput = document.getElementById('prompt-input');
+const sendBtn = document.getElementById('send-btn');
+const fileInput = document.getElementById('file-input');
+const imgPreviewRow = document.getElementById('img-preview-row');
+const previewImg = document.getElementById('preview-img');
+
+// ── API Key persistence ──
+const SAVED_KEY = localStorage.getItem('gemini_api_key');
+if (SAVED_KEY) { apiInput.value = SAVED_KEY; apiDot.classList.add('active'); }
+apiInput.addEventListener('input', () => {
+  const k = apiInput.value.trim();
+  apiDot.classList.toggle('active', k.length > 20);
+  if (k.length > 20) localStorage.setItem('gemini_api_key', k);
+  else localStorage.removeItem('gemini_api_key');
+});
+
+// ── iOS install hint ──
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone;
+if (isIOS && !isStandalone) {
+  document.getElementById('install-hint').style.display = 'block';
+}
+
+// ── File input ──
+function triggerCamera() { fileInput.click(); }
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    const [, b64] = dataUrl.split(',');
+    imageBase64 = b64;
+    imageMime = file.type;
+    previewImg.src = dataUrl;
+    imgPreviewRow.style.display = 'flex';
+    if (!promptInput.value.trim()) {
+      promptInput.value = '請分析這段文字的文法結構，逐一解釋每個詞彙與句型';
+      autoResize();
+    }
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+function removeImage() {
+  imageBase64 = null; imageMime = null;
+  previewImg.src = '';
+  imgPreviewRow.style.display = 'none';
+}
+
+function quickPrompt(text) {
+  promptInput.value = text;
+  autoResize();
+  promptInput.focus();
+}
+
+// ── Text markup (Thai + Japanese clickable TTS) ──
+function markupText(raw) {
+  // Pattern: Thai OR Japanese runs
+  const THAI   = /[\u0E00-\u0E7F]+/;
+  const JAPAN  = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]+/;
+  const COMBO  = new RegExp(`(${THAI.source}|${JAPAN.source})`, 'g');
+
+  let html = '';
+  let last = 0;
+  let m;
+  while ((m = COMBO.exec(raw)) !== null) {
+    // Plain text before match
+    if (m.index > last) {
+      html += escHtml(raw.slice(last, m.index));
+    }
+    const word = m[0];
+    const isThai = THAI.test(word);
+    const lang = isThai ? 'th' : 'ja';
+    html += `<span class="tts-word" data-lang="${lang}" onclick="speak(this)">${escHtml(word)}</span>`;
+    last = m.index + word.length;
+  }
+  if (last < raw.length) html += escHtml(raw.slice(last));
+  return html;
+}
+
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ── Speech synthesis ──
+function speak(el) {
+  if (!window.speechSynthesis) {
+    alert('此裝置不支援語音合成');
+    return;
+  }
+  const lang = el.dataset.lang === 'th' ? 'th-TH' : 'ja-JP';
+  const text = el.textContent;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang;
+  utter.rate = 0.85;
+  utter.pitch = 1;
+
+  // Find best voice
+  const voices = window.speechSynthesis.getVoices();
+  const best = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+  if (best) utter.voice = best;
+
+  document.querySelectorAll('.tts-word.playing').forEach(e => e.classList.remove('playing'));
+  el.classList.add('playing');
+  utter.onend = () => el.classList.remove('playing');
+  utter.onerror = () => el.classList.remove('playing');
+  window.speechSynthesis.speak(utter);
+}
+
+// Pre-load voices on iOS
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+}
+
+// ── Render messages ──
+function clearEmpty() {
+  if (emptyState) emptyState.remove();
+}
+
+function appendUserMsg(text, imgSrc) {
+  clearEmpty();
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.className = 'msg-thumb';
+    bubble.appendChild(img);
+  }
+  if (text) {
+    const t = document.createElement('span');
+    t.textContent = text;
+    bubble.appendChild(t);
+  }
+  div.appendChild(bubble);
+  chatArea.appendChild(div);
+  scrollBottom();
+}
+
+function appendAssistantMsg(text) {
+  clearEmpty();
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = markupText(text);
+  div.appendChild(bubble);
+  chatArea.appendChild(div);
+  scrollBottom();
+}
+
+function appendError(msg) {
+  clearEmpty();
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  const err = document.createElement('div');
+  err.className = 'error-bubble';
+  err.textContent = '⚠ ' + msg;
+  div.appendChild(err);
+  chatArea.appendChild(div);
+  scrollBottom();
+}
+
+let loadingEl = null;
+function showLoading() {
+  clearEmpty();
+  loadingEl = document.createElement('div');
+  loadingEl.className = 'msg assistant';
+  const wrap = document.createElement('div');
+  wrap.className = 'loading-bubble';
+  wrap.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+  loadingEl.appendChild(wrap);
+  chatArea.appendChild(loadingEl);
+  scrollBottom();
+}
+function hideLoading() {
+  if (loadingEl) { loadingEl.remove(); loadingEl = null; }
+}
+
+function scrollBottom() {
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ── Send ──
+async function sendMessage() {
+  if (isLoading) return;
+  const apiKey = apiInput.value.trim();
+  const text = promptInput.value.trim();
+  const hasImg = !!imageBase64;
+
+  if (!apiKey) { alert('請先輸入 Gemini API Key'); return; }
+  if (!text && !hasImg) return;
+
+  const displayText = text || '';
+  const imgSrc = hasImg ? `data:${imageMime};base64,${imageBase64}` : null;
+
+  appendUserMsg(displayText, imgSrc);
+
+  // Build parts
+  const parts = [];
+  if (hasImg) {
+    parts.push({ inline_data: { mime_type: imageMime, data: imageBase64 } });
+  }
+  parts.push({ text: text || '請分析這張圖片中的語言內容，解釋文法結構與意思，並標示每個詞彙的詞性。' });
+
+  history.push({ role: 'user', parts });
+
+  promptInput.value = '';
+  autoResize();
+  removeImage();
+  isLoading = true;
+  sendBtn.disabled = true;
+  showLoading();
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: history,
+          generationConfig: { temperature: 0.4, maxOutputTokens: 2048 }
+        })
+      }
+    );
+    const data = await res.json();
+    hideLoading();
+
+    if (data.error) {
+      appendError(data.error.message || '發生錯誤');
+    } else {
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '（無回應）';
+      history.push({ role: 'model', parts: [{ text: reply }] });
+      appendAssistantMsg(reply);
+    }
+  } catch (err) {
+    hideLoading();
+    appendError('連線失敗，請確認 API Key 與網路連線。');
+  }
+
+  isLoading = false;
+  sendBtn.disabled = false;
+}
+
+// ── Textarea auto-resize ──
+function autoResize() {
+  promptInput.style.height = 'auto';
+  promptInput.style.height = Math.min(promptInput.scrollHeight, 100) + 'px';
+}
+promptInput.addEventListener('input', autoResize);
+promptInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+
+
+</body></html>
